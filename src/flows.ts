@@ -98,7 +98,7 @@ export function get(flowID: string, name: string) {
  */
 export function del(flowID: string, name: string) {
     const stations = flows.get(flowID)
-    if (stations === undefined) { return undefined }
+    if (stations === undefined) { return false }
 
     stations.delete(name)
 

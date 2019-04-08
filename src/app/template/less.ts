@@ -1,5 +1,6 @@
 import Station from '../../Station'
 import StationDesc from '../../StationDesc'
+import { MsgType } from '../../types'
 import accept from './accept'
 
 type LessCallback = (message: string, src: StationDesc)
@@ -11,7 +12,7 @@ export = async function less(callback: LessCallback) {
 
         if (rst === undefined) { return }
 
-        station.block(rst.message).from(rst.next)
+        station.send(MsgType.Block).to(rst.next)
         station.close()
     })
 }

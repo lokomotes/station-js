@@ -33,7 +33,7 @@ export class NotPermittedErr extends Error {
 export class UnmanagedErr extends Error {
     public what: any
     constructor(what: any, message?: string | undefined) {
-        const msg = message || 'Unexpected Err'
+        const msg = message || 'Unmanaged'
         super(`${msg}: ${what}`)
         this.what = what
     }

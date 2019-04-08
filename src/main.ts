@@ -91,7 +91,7 @@ function sigHandler(sig: Signal) {
     }
 }
 
-function main() {
+export function main() {
     const sigStream = RouterCli.listen((() => {
         const req = new RouterMsg.ListenRequest()
         req.setToken(token)
@@ -109,5 +109,3 @@ function main() {
         throw new Error('Unexpected end of stream.')
     })
 }
-
-main()

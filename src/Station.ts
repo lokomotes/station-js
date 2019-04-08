@@ -1,29 +1,28 @@
 import { EventEmitter } from 'events'
-import { Station as StMsg } from './api/common_pb'
+import * as LokoMsg from './api/common_pb'
 import * as RouterMsg from './api/router_pb'
 import * as errs from './errors'
-import RouterCli from './RouterClient'
+import RouterClient from './RouterClient'
 import StationDesc from './StationDesc'
 import token from './token'
-
-export type ReceiveListener = (message: string, src: StationDesc) => void
-export type ReceiveType = 'linked' | 'signal' | 'blocked'
+import * as types from './types'
 
 export default class Station {
 
     public name: string
     private _isClosed = false
     private _flowID: string
-    private _stMsg: StMsg
+    private _stMsg: LokoMsg.Station
 
     private _internalEmitter: EventEmitter
     private _externalEmitter = new EventEmitter()
 
     private _blocked = new Set<string>()
-    private _grabbed = new Map<ReceiveType, Map<string, ReceiveListener>>([
-        ['linked', new Map()],
-        ['signal', new Map()],
-        ['blocked', new Map()],
+    private _grabbed = new Map<types.EventType, Map<string, types.EventListener>>([
+        [types.EventType.Signaled, new Map()],
+        [types.EventType.Linked, new Map()],
+        [types.EventType.Blocked, new Map()],
+        [types.EventType.Closed, new Map()],
     ])
 
     constructor({
@@ -37,7 +36,7 @@ export default class Station {
         this._internalEmitter = emitter
 
         this._stMsg = (() => {
-            const st = new StMsg()
+            const st = new LokoMsg.Station()
             st.setId(flowID)
             st.setName(name)
             return st
@@ -45,8 +44,8 @@ export default class Station {
 
         this.name = name
 
-        const filter = (type: ReceiveType) => {
-            return (msg: string, src: StMsg) => {
+        const filter = (type: types.EventType) => {
+            return (msg: string, src: LokoMsg.Station) => {
                 const stDesc = new StationDesc(src)
                 const key = stDesc.serialize()
 
@@ -66,197 +65,75 @@ export default class Station {
         }
 
         emitter
-            .on('signal', filter('signal'))
-            .on('linked', filter('linked'))
-            .on('blocked', filter('blocked'))
+            .on(types.EventType.Signaled, filter(types.EventType.Signaled))
+            .on(types.EventType.Linked, filter(types.EventType.Linked))
+            .on(types.EventType.Blocked, filter(types.EventType.Blocked))
     }
 
-    /**
-     * @summary Writes a message to be sent to future reachable `Station`
-     * @param message
-     *
-     * @description
-     * It writes a message but does not send it yet.
-     * You can send it by specifying the destination `Station` using returned `to` method.
-     */
-    public link(message?: string | undefined) {
-        /**
-         * @summary Send a LINK message you wrote to specified `Station`.
-         * @param destination
-         *
-         * @description \
-         * - This message is forwarded to the specified `Station`
-         *   and the `Station` receives `linked` event.
-         * - The specified `Station` will be created if it does not exist.
-         */
-        const to = (destination: StationDesc | {
-            name: string,
-            image: string,
-        }) => {
-            const dst = new StMsg()
+    public send(type: types.MsgType, message?: string) {
+        const to = (destination: StationDesc) => {
+            const dst = new LokoMsg.Station()
             dst.setName(destination.name)
             dst.setImage(destination.image)
 
-            const req = new RouterMsg.LinkRequest()
+            const req = (() => {
+                switch (type) {
+                    case types.MsgType.Signal: return new RouterMsg.TransmitRequest()
+                    case types.MsgType.Link: return new RouterMsg.LinkRequest()
+                    case types.MsgType.Block: return new RouterMsg.BlockRequest()
+                    default: return null
+                }
+            })()
+
+            if (req === null) { throw new errs.UnmanagedErr(type) }
+
             req.setToken(token)
             req.setSrc(this._stMsg)
             req.setDst(dst)
             req.setMessage(message || '')
 
-            return new Promise((resolve, reject) => {
-                RouterCli.link(req, (err, res) => {
-                    const code = res.getCode()
-
-                    switch (code) {
-                        default:
-                            reject(new errs.UnmanagedErr(code))
-                            break
-
-                        case 200:
-                            break
-
-                        case 404:
-                            reject(new errs.ImageNotFoundErr(destination.image))
-                            break
-                    }
-
-                    resolve(res)
+            switch (type) {
+                case types.MsgType.Signal: return new Promise<LokoMsg.Response>((resolve, reject) => {
+                    RouterClient.transmit(req, (err, res) => {
+                        if (err) {reject(err) }
+                        const code = res.getCode()
+                        switch (code) {
+                            case 200: return resolve(res)
+                            case 403: return reject(new errs.NotPermittedErr(destination.name))
+                            case 404: return reject(new errs.ImageNotFoundErr(destination.name))
+                            default: return reject(new errs.UnmanagedErr(code))
+                        }
+                    })
                 })
-            })
+                case types.MsgType.Link: return new Promise<LokoMsg.Response>((resolve, reject) => {
+                    RouterClient.link(req, (err, res) => {
+                        if (err) {reject(err) }
+                        const code = res.getCode()
+                        switch (code) {
+                            case 200: return resolve(res)
+                            case 404: return reject(new errs.ImageNotFoundErr(destination.image))
+                            default: return reject(new errs.UnmanagedErr(code))
+                        }
+                    })
+                })
+                case types.MsgType.Block: return new Promise<LokoMsg.Response>((resolve, reject) => {
+                    RouterClient.block(req, (err, res) => {
+                        if (err) {reject(err) }
+                        const code = res.getCode()
+                        switch (code) {
+                            case 200: return resolve(res)
+                            case 404: return reject(new errs.ImageNotFoundErr(destination.image))
+                            default: return reject(new errs.UnmanagedErr(code))
+                        }
+                    })
+                })
+            }
         }
 
         return { to }
     }
 
-    /**
-     * @summary Writes a message to be sent to other `Station`.
-     * @param message
-     *
-     * @example
-     * Station.signal("Hi John").to({
-     *  name: "John",
-     *  image: "person:latest"
-     * })
-     *
-     * @description
-     * It writes a message but does not send it yet.
-     * You can send it by specifying the destination `Station` using returned `to` method.
-     */
-    public signal(message?: string | undefined) {
-        /**
-         * @summary Writes a message to be sent to other `Station`.
-         * @param destination
-         *
-         * @description \
-         * - This message is forwarded to the specified `Station`
-         *   and the `Station` receives `signal` event.
-         * - It throws `NotPermittedErr` if specified `Station` blocked this `Station`.
-         * - It throws `StationNotFoundErr` if specified `Station` does not exist.
-         */
-        const to = (destination: StationDesc | {
-            name: string,
-            image: string,
-        }) => {
-            const dst = new StMsg()
-            dst.setName(destination.name)
-            dst.setImage(destination.image)
-
-            const req = new RouterMsg.TransmitRequest()
-            req.setToken(token)
-            req.setSrc(this._stMsg)
-            req.setDst(dst)
-            req.setMessage(message || '')
-
-            return new Promise((resolve, reject) => {
-                RouterCli.transmit(req, (err, res) => {
-                    const code = res.getCode()
-
-                    switch (code) {
-                        default:
-                            reject(new errs.UnmanagedErr(code))
-                            break
-
-                        case 200:
-                            break
-
-                        case 403:
-                            reject(new errs.NotPermittedErr(destination.name))
-                            break
-
-                        case 404:
-                            reject(new errs.ImageNotFoundErr(destination.name))
-                            break
-                    }
-
-                    resolve(res)
-                })
-            })
-        }
-
-        return { to }
-    }
-
-    /**
-     * @summary Writes a message to be sent telling `Station` not to send any further messages.
-     * @param message
-     *
-     * @description
-     * It writes a message but does not send it yet.
-     * You can send it by specifying the destination `Station` using returned `from` method.
-     */
-    public block(message?: string | undefined) {
-        /**
-         * @summary Send a BLOCK message you wrote to specified `Station`.
-         * @param destination
-         *
-         * @description \
-         * - This message is forwarded to the specified `Station`
-         *   and the `Station` receives `bloeked` event.
-         * - It throws `StationNotFoundErr` if specified `Station` does not exist.
-         */
-        const from = (destination: StationDesc | {
-            name: string,
-            image: string,
-        }) => {
-            const dst = new StMsg()
-            dst.setName(destination.name)
-            dst.setImage(destination.image)
-
-            const req = new RouterMsg.BlockRequest()
-            req.setToken(token)
-            req.setSrc(this._stMsg)
-            req.setDst(dst)
-            req.setMessage(message || '')
-
-            return new Promise((resolve, reject) => {
-                RouterCli.block(req, (err, res) => {
-                    const code = res.getCode()
-
-                    switch (code) {
-                        default:
-                            reject(new errs.UnmanagedErr(code))
-                            break
-
-                        case 200:
-                            this._blocked.add(
-                                destination instanceof StationDesc
-                                    ? destination.serialize()
-                                    : (new StationDesc(destination)).serialize(),
-                            )
-                            break
-
-                        case 404:
-                            reject(new errs.StationNotFoundErr(destination.name))
-                            break
-                    }
-                })
-            })
-        }
-
-        return { from }
-    }
-
-    public on(type: ReceiveType, listener: ReceiveListener) {
+    public on(type: types.EventType, listener: types.EventListener) {
         this._externalEmitter.on(type, listener)
 
         return this
@@ -278,8 +155,8 @@ export default class Station {
         name: string,
         image: string,
     }) {
-        const grabber = (type: ReceiveType) => {
-            return (listener: ReceiveListener) => {
+        const grabber = (type: types.EventType) => {
+            return (listener: types.EventListener) => {
                 const stDesc = station instanceof StationDesc
                     ? station
                     : new StationDesc(station)
@@ -290,9 +167,9 @@ export default class Station {
         }
 
         return {
-            signal: grabber('signal'),
-            linked: grabber('linked'),
-            blocked: grabber('blocked'),
+            signal: grabber(types.EventType.Signaled),
+            linked: grabber(types.EventType.Linked),
+            blocked: grabber(types.EventType.Blocked),
         }
     }
 
@@ -309,7 +186,7 @@ export default class Station {
         name: string,
         image: string,
     }) {
-        const loser = (type: ReceiveType) => {
+        const loser = (type: types.EventType) => {
             return () => {
                 const stDesc = station instanceof StationDesc
                     ? station
@@ -324,9 +201,9 @@ export default class Station {
         }
 
         return {
-            signal: loser('signal'),
-            linked: loser('linked'),
-            blocked: loser('blocked'),
+            signal: loser(types.EventType.Signaled),
+            linked: loser(types.EventType.Linked),
+            blocked: loser(types.EventType.Blocked),
         }
     }
 
@@ -336,6 +213,6 @@ export default class Station {
 
     public close() {
         this._isClosed = true
-        this._internalEmitter.emit('close')
+        this._internalEmitter.emit(types.EventType.Closed)
     }
 }
