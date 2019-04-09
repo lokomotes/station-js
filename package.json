@@ -1,11 +1,11 @@
 {
-  "name": "loko-station-js",
+  "name": "@lokomotes/station",
   "version": "0.0.1",
   "description": "",
   "main": "dist/main.js",
   "scripts": {
     "start": "node dist/index.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "gulp"
   },
   "repository": {
     "type": "git",
@@ -15,6 +15,7 @@
     "lokomotes"
   ],
   "author": "lesomnus",
+  "types": "dist/Station.d.ts",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/lokomotes/station-js/issues"
@@ -22,8 +23,8 @@
   "homepage": "https://github.com/lokomotes/station-js#readme",
   "devDependencies": {
     "@types/google-protobuf": "^3.2.7",
-    "@types/lodash": "^4.14.123",
     "@types/node": "10.14.4",
+    "del": "^4.1.0",
     "grpc-tools": "^1.7.2",
     "grpc_tools_node_protoc_ts": "^2.5.0",
     "gulp": "^4.0.0",

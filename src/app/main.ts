@@ -1,3 +1,6 @@
-import noop from './template/noop'
+import { Station } from '../Station'
 
-export = noop
+export = (s: Station, args: string) => {
+    s.log('noop')
+    s.close()
+}

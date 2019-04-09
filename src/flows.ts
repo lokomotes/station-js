@@ -1,6 +1,6 @@
 import { EventEmitter } from 'events'
 
-import Station from './Station'
+import { Station } from './Station'
 
 class StationBody {
     public station: Station

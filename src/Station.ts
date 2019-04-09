@@ -7,7 +7,7 @@ import StationDesc from './StationDesc'
 import token from './token'
 import * as types from './types'
 
-export default class Station {
+export class Station {
 
     public name: string
     private _isClosed = false
@@ -95,7 +95,7 @@ export default class Station {
             switch (type) {
                 case types.MsgType.Signal: return new Promise<LokoMsg.Response>((resolve, reject) => {
                     RouterClient.transmit(req, (err, res) => {
-                        if (err) {reject(err) }
+                        if (err) { reject(err) }
                         const code = res.getCode()
                         switch (code) {
                             case 200: return resolve(res)
@@ -107,7 +107,7 @@ export default class Station {
                 })
                 case types.MsgType.Link: return new Promise<LokoMsg.Response>((resolve, reject) => {
                     RouterClient.link(req, (err, res) => {
-                        if (err) {reject(err) }
+                        if (err) { reject(err) }
                         const code = res.getCode()
                         switch (code) {
                             case 200: return resolve(res)
@@ -118,7 +118,7 @@ export default class Station {
                 })
                 case types.MsgType.Block: return new Promise<LokoMsg.Response>((resolve, reject) => {
                     RouterClient.block(req, (err, res) => {
-                        if (err) {reject(err) }
+                        if (err) { reject(err) }
                         const code = res.getCode()
                         switch (code) {
                             case 200: return resolve(res)
