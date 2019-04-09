@@ -4,7 +4,7 @@
   "description": "",
   "main": "dist/main.js",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "node main.js",
     "build": "gulp"
   },
   "repository": {
@@ -15,7 +15,7 @@
     "lokomotes"
   ],
   "author": "lesomnus",
-  "types": "dist/Station.d.ts",
+  "types": "dist/index.d.ts",
   "license": "Apache-2.0",
   "bugs": {
     "url": "https://github.com/lokomotes/station-js/issues"
@@ -28,6 +28,7 @@
     "grpc-tools": "^1.7.2",
     "grpc_tools_node_protoc_ts": "^2.5.0",
     "gulp": "^4.0.0",
+    "gulp-filter": "^5.1.0",
     "gulp-typescript": "^5.0.1",
     "protobufjs": "^6.8.8",
     "tslint": "^5.14.0",

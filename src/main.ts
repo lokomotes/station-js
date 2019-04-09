@@ -2,7 +2,7 @@ import { Signal } from './api/router_pb'
 import * as RouterMsg from './api/router_pb'
 import * as flows from './flows'
 import RouterCli from './RouterClient'
-import StationDesc from './StationDesc'
+import { StationDesc } from './StationDesc'
 import token from './token'
 
 // tslint:disable-next-line:no-var-requires
@@ -91,7 +91,7 @@ function sigHandler(sig: Signal) {
     }
 }
 
-export function main() {
+function main() {
     const sigStream = RouterCli.listen((() => {
         const req = new RouterMsg.ListenRequest()
         req.setToken(token)
@@ -109,3 +109,5 @@ export function main() {
         throw new Error('Unexpected end of stream.')
     })
 }
+
+main()

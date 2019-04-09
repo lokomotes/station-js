@@ -1,10 +1,10 @@
 {
-  "include": [
-    "src/**/*.ts"
-  ],
-  "exclude": [
-    "src/api/**/*"
-  ],
+  // "include": [
+  //   "src/**/*.ts"
+  // ],
+  // "exclude": [
+  //   "src/api/**/*"
+  // ],
   
   "compilerOptions": {
     /* Basic Options */

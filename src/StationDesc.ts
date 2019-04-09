@@ -1,6 +1,6 @@
 import { Station } from './api/common_pb'
 
-export default class StationDesc {
+export class StationDesc {
     public flowID: string
     public name: string
     public image: string

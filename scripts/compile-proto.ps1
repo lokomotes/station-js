@@ -3,7 +3,7 @@ $WORKSPACE = Join-Path $PSScriptRoot ".." -Resolve
 $PROTOS_PATH = "https://raw.github.com/lokomotes/metro/master/api/proto/"
 $PROTOS = "common.proto", "router.proto"
 
-$JS_DST = "$WORKSPACE\dist\api\"
+$JS_DST = "$WORKSPACE\cargo\api\"
 $TS_DST = "$WORKSPACE\src\api\"
 $PROTOC_NODE_PLUGIN_PATH = "$WORKSPACE\node_modules\.bin\grpc_tools_node_protoc_plugin.cmd"
 $PROTOC_GEN_TS_PATH = "$WORKSPACE\node_modules\.bin\protoc-gen-ts.cmd"

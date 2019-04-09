@@ -1,5 +1,5 @@
 import * as loko from './api/common_pb'
-import StationDesc from './StationDesc'
+import { StationDesc } from './StationDesc'
 
 export type EventListener = (message: string, src: StationDesc) => void
 

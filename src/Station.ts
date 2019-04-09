@@ -3,7 +3,7 @@ import * as LokoMsg from './api/common_pb'
 import * as RouterMsg from './api/router_pb'
 import * as errs from './errors'
 import RouterClient from './RouterClient'
-import StationDesc from './StationDesc'
+import { StationDesc } from './StationDesc'
 import token from './token'
 import * as types from './types'
 
