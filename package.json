@@ -1,5 +1,5 @@
 {
-  "name": "@lokomotes/station",
+  "name": "@lokomotes/station-base",
   "version": "0.0.1",
   "description": "",
   "main": "dist/main.js",
@@ -28,6 +28,7 @@
     "grpc-tools": "^1.7.2",
     "grpc_tools_node_protoc_ts": "^2.5.0",
     "gulp": "^4.0.0",
+    "gulp-debug": "^4.0.0",
     "gulp-filter": "^5.1.0",
     "gulp-typescript": "^5.0.1",
     "protobufjs": "^6.8.8",

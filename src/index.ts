@@ -1,9 +1,9 @@
 export * from './errors'
 export * from './types'
 export * from './StationDesc'
+
 export * from './Station'
 
-import accept from './templates/accept'
-import less from './templates/less'
+import * as _template from './templates'
 
-export { accept, less }
+export import template = _template

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 workspace=$(dirname $0)/..
-imageRef=lokomotes/station-node:latest
+imageRef=lokomotes/station-nodejs:latest
 
 cd $workspace/cargo
 

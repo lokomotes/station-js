@@ -21,6 +21,6 @@ export class StationDesc {
     }
 
     public serialize() {
-        return this.image + this.name ? '~' + this.name : ''
+        return this.image + (this.name ? '~' + this.name : '')
     }
 }

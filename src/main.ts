@@ -4,6 +4,7 @@ import * as flows from './flows'
 import RouterCli from './RouterClient'
 import { StationDesc } from './StationDesc'
 import token from './token'
+import { EventType } from './types'
 
 // tslint:disable-next-line:no-var-requires
 const app = require('./app/main')
@@ -72,21 +73,21 @@ function sigHandler(sig: Signal) {
                 // @ts-ignore
                 : start().emitter
                 // @ts-ignore
-            ).emit('linked', sig.getMessage(), new StationDesc(srcSt))
+            ).emit(EventType.Linked, sig.getMessage(), new StationDesc(srcSt))
             break
 
         case Ctrl.MESSAGE:
             if (!isExists) {
                 console.warn('`Station` does not exist: ' + dstName)
                 // @ts-ignore
-            } else { fetch().emitter.emit('signal', sig.getMessage(), new StationDesc(srcSt)) }
+            } else { fetch().emitter.emit(EventType.Signaled, sig.getMessage(), new StationDesc(srcSt)) }
             break
 
         case Ctrl.BLOCKED:
             if (!isExists) {
                 console.warn('`Station` does not exist: ' + dstName)
                 // @ts-ignore
-            } else { fetch().emitter.emit('blocked', sig.getMessage(), new StationDesc(srcSt)) }
+            } else { fetch().emitter.emit(EventType.Blocked, sig.getMessage(), new StationDesc(srcSt)) }
             break
     }
 }

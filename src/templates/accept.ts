@@ -4,11 +4,11 @@ type AcceptCallback = (station: loko.Station, message: string, src: loko.Station
 
 export = function accept(count: number, callback: AcceptCallback) {
     return async (station: loko.Station) => {
-        const cnt = count
+        let cnt = count
         let listener: loko.EventListener
 
         async function acceptor(message: string, src: loko.StationDesc) {
-            if (--count === 0) {
+            if (--cnt === 0) {
                 listener = (_: string, src: loko.StationDesc) => {
                     station.send(loko.MsgType.Block).to(src)
                 }

@@ -18,12 +18,7 @@ export class Station {
     private _externalEmitter = new EventEmitter()
 
     private _blocked = new Set<string>()
-    private _grabbed = new Map<types.EventType, Map<string, types.EventListener>>([
-        [types.EventType.Signaled, new Map()],
-        [types.EventType.Linked, new Map()],
-        [types.EventType.Blocked, new Map()],
-        [types.EventType.Closed, new Map()],
-    ])
+    private _grabbeds = new Map<string, Map<types.MsgType, EventEmitter>>()
 
     constructor({
         flowID, name, emitter,
@@ -44,30 +39,45 @@ export class Station {
 
         this.name = name
 
-        const filter = (type: types.EventType) => {
-            return (msg: string, src: LokoMsg.Station) => {
-                const stDesc = new StationDesc(src)
-                const key = stDesc.serialize()
+        const filter = (eType: types.EventType, mType: types.MsgType | void) => {
+            return (msg: string, src: StationDesc) => {
+                const emitToExternal = () => this._externalEmitter.emit(eType, msg, src)
 
-                if (this._blocked.has(key)) {
+                if (eType === types.EventType.Closed) {
+                    emitToExternal()
+                }
+
+                const st = src.serialize()
+
+                if (this._blocked.has(st)) {
+                    console.log(`${st} blocked`)
                     return
                 }
 
+                console.log(`${eType}|${msg} from ${st}`)
+
+                if (mType === undefined) {
+                    emitToExternal()
+                    return
+                }
+
+                const grabbed = this._grabbeds.get(st)
+                if (grabbed === undefined) {
+                    emitToExternal()
+                    return
+                }
+
+                const emitter = grabbed.get(mType)
                 // @ts-ignore
-                const listener = this._grabbed.get(type).get(key)
-                if (listener !== undefined) {
-                    listener(msg, stDesc)
-                    return
-                }
-
-                this._externalEmitter.emit(type, msg, stDesc)
+                emitter.emit(mType, msg, src)
+                return
             }
         }
 
         emitter
-            .on(types.EventType.Signaled, filter(types.EventType.Signaled))
-            .on(types.EventType.Linked, filter(types.EventType.Linked))
-            .on(types.EventType.Blocked, filter(types.EventType.Blocked))
+            .on(types.EventType.Signaled, filter(types.EventType.Signaled, types.MsgType.Signal))
+            .on(types.EventType.Linked, filter(types.EventType.Linked, types.MsgType.Link))
+            .on(types.EventType.Blocked, filter(types.EventType.Blocked, types.MsgType.Block))
     }
 
     public send(type: types.MsgType, message?: string) {
@@ -139,72 +149,43 @@ export class Station {
         return this
     }
 
-    /**
-     * @summary Intercept messages from other `Station`.
-     *
-     * @param station
-     *
-     * @description
-     * It describes which `Station` to intercept the message from.
-     * You can resolve it using returned methods.
-     * Note that intercepted messages can NOT be caught via `on` method.
-     * If you want to catch messages using `on` method, release it using `lose` method.
-     *
-     */
     public grab(station: StationDesc | {
         name: string,
         image: string,
     }) {
-        const grabber = (type: types.EventType) => {
-            return (listener: types.EventListener) => {
-                const stDesc = station instanceof StationDesc
-                    ? station
-                    : new StationDesc(station)
+        const st = station instanceof StationDesc
+            ? station.serialize()
+            : (new StationDesc(station)).serialize()
 
-                // @ts-ignore
-                this._grabbed.get(type).set(stDesc.serialize(), listener)
-            }
+        // never be undefined
+        let grabbed: Map<types.MsgType, EventEmitter>
+
+        if (!this._grabbeds.has(st)) {
+            grabbed = new Map<types.MsgType, EventEmitter>([
+                [types.MsgType.Signal, new EventEmitter()],
+                [types.MsgType.Link, new EventEmitter()],
+                [types.MsgType.Block, new EventEmitter()],
+            ])
+            this._grabbeds.set(st, grabbed)
+        } else {
+            // watch https://github.com/Microsoft/TypeScript/issues/9619
+            // @ts-ignore
+            grabbed = this._grabbeds.get(st)
         }
 
-        return {
-            signal: grabber(types.EventType.Signaled),
-            linked: grabber(types.EventType.Linked),
-            blocked: grabber(types.EventType.Blocked),
-        }
-    }
+        console.log(`${st} grabbed`)
 
-    /**
-     * @summary Releases grabbed messages from `Station`.
-     *
-     * @param station
-     *
-     * @descriptionIt
-     * It describes which `Station` to release.
-     * You can resolve it using returned methods.
-     */
-    public lose(station: StationDesc | {
-        name: string,
-        image: string,
-    }) {
-        const loser = (type: types.EventType) => {
-            return () => {
-                const stDesc = station instanceof StationDesc
-                    ? station
-                    : new StationDesc(station)
-
-                const list = this._grabbed.get(type)
-                // never happens
-                if (list === undefined) { throw new Error('Grabbed list does not exist: ' + type) }
-
-                list.delete(stDesc.serialize())
-            }
+        const on = (type: types.MsgType, listener: types.EventListener) => {
+            // @ts-ignore
+            grabbed.get(type).on(type, listener)
         }
 
-        return {
-            signal: loser(types.EventType.Signaled),
-            linked: loser(types.EventType.Linked),
-            blocked: loser(types.EventType.Blocked),
+        const off = (type: types.MsgType, listener: types.EventListener) => {
+            // @ts-ignore
+            grabbed.get(type).off(type, listener)
         }
+
+        return { on, off }
     }
 
     public log(message: string) {
